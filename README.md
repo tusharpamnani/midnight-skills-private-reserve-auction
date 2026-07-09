@@ -1,36 +1,92 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Private Party RSVP DApp
 
-## Getting Started
+A privacy-preserving party RSVP application on **Midnight Network** — attendees RSVP privately, then cross the **privacy boundary** when checking in with an unshielded NIGHT entry fee.
 
-First, run the development server:
+## Architecture
+
+### Smart Contract (`contract/src/private-party.compact`)
+
+| Circuit | Who | What it does |
+|---|---|---|
+| `constructor` | Organizer | Deploy with max guests, entry fee, and a secret |
+| `rsvp` | Attendee | Privately commit via `persistentCommit` — only a hash stored on-chain |
+| `startParty` | Organizer | Open the door for check-in (requires organizer secret) |
+| `checkIn` | Attendee | Pay entry fee (unshielded NIGHT) → address becomes **public on ledger** |
+| `closeEntry` | Organizer | Close doors early if not all checked in |
+| `claimFees` | Organizer | Send total collected fees to organizer's unshielded address |
+
+### Privacy Model
+
+| Phase | On-chain data | Private? |
+|---|---|---|
+| RSVP | `persistentCommit(salt, address)` hash in `hashedPartyGoers` | **Yes** |
+| Start | `partyState = STARTED` | State only, no identities |
+| **Check in** | `receiveUnshielded` + `address` in `checkedInParty` | **No — privacy boundary** |
+| Claim fees | `sendUnshielded` to organizer | **No** |
+
+No `witness` declarations — authentication uses `persistentHash("private-party:pk:" + secret)` compared to stored `organizer` key, with domain separator.
+
+## Prerequisites
+
+- **Node.js** 20+
+- **1AM Wallet** (browser extension) on **Midnight Preview** with tNIGHT
+- **Compact compiler** (`npm run compact`)
+
+## Quick Start
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run compact      # compile Compact contract
+npm run sync:assets  # copy ZK proving assets to public/
+npm run dev          # start dev server
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000 with the 1AM wallet installed.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Usage
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+**Organizer flow:**
+1. Connect wallet → select "Organizer" → set max guests + entry fee → deploy
+2. Share the contract address with attendees
+3. Start party → guests can check in
+4. Close doors → claim fees
 
-## Learn More
+**Attendee flow:**
+1. Connect wallet → select "Attendee" → paste contract address
+2. RSVP (private — only a hash goes on-chain)
+3. After party starts: Check In (pays unshielded NIGHT, address becomes public)
 
-To learn more about Next.js, take a look at the following resources:
+Secrets are stored in `localStorage` per contract address. Use the same browser to manage your role.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Commands
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Command | Description |
+|---|---|
+| `npm run dev` | Start dev server |
+| `npm run build` | Sync assets + production build |
+| `npm run compact` | Re-compile Compact contract |
+| `npm run sync:assets` | Copy ZK assets to `public/zk/` |
 
-## Deploy on Vercel
+## Project Structure
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+├── contract/src/
+│   ├── private-party.compact   # Compact smart contract
+│   └── index.ts                # Compiled contract wrapper + exports
+├── lib/
+│   ├── midnight.ts             # Wallet session, providers, indexer polling
+│   ├── party.ts                # Deploy, rsvp, checkIn, etc.
+│   ├── address.ts              # Bech32 → UserAddress bytes
+│   ├── secret.ts               # Generate/store secrets in localStorage
+│   └── isomorphic-ws-fix.mjs   # WebSocket polyfill for Next.js
+├── app/
+│   ├── layout.tsx
+│   ├── page.tsx
+│   └── party/PartyClient.tsx   # Full organizer + attendee UI
+├── public/zk/private-party/    # ZK proving & verification keys
+└── scripts/sync-zk-assets.mjs
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Target Network
+
+**Preview** (hardcoded in `PartyClient.tsx`). Change to `preprod` to target Preprod.
