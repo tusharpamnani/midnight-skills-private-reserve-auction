@@ -7,17 +7,17 @@ export function generateSecret(): Uint8Array {
 }
 
 export function saveSecret(
-  role: 'organizer' | 'attendee',
+  role: 'seller' | 'bidder',
   contractAddress: string,
   secret: Uint8Array,
 ) {
-  localStorage.setItem(`private-party:${role}:${contractAddress}`, toHex(secret));
+  localStorage.setItem(`private-auction:${role}:${contractAddress}`, toHex(secret));
 }
 
 export function loadSecret(
-  role: 'organizer' | 'attendee',
+  role: 'seller' | 'bidder',
   contractAddress: string,
 ): Uint8Array | null {
-  const hex = localStorage.getItem(`private-party:${role}:${contractAddress}`);
+  const hex = localStorage.getItem(`private-auction:${role}:${contractAddress}`);
   return hex ? fromHex(hex) : null;
 }

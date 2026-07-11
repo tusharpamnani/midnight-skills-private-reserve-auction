@@ -1,11 +1,11 @@
 {
-  "name": "private-party-dapp",
+  "name": "private-reserve-auction-dapp",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "build": "npm run sync:assets && next build",
+    "build": "next build",
     "compact": "npm run compact --prefix contract",
     "sync:assets": "node scripts/sync-zk-assets.mjs",
     "postinstall": "echo 'All deps at root level'"

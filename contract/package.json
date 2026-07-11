@@ -1,10 +1,10 @@
 {
-  "name": "@private-party/contract",
+  "name": "@private-reserve-auction/contract",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "compact": "compact compile src/private-party.compact src/managed/private-party"
+    "compact": "compact compile src/private-reserve-auction.compact src/managed/private-reserve-auction"
   },
   "devDependencies": {
     "@midnight-ntwrk/compact-runtime": "0.16.0"

@@ -8,10 +8,10 @@ let _ledgerFn: any = null;
 export async function getCompiledContract(zkPath?: string): Promise<any> {
   if (!_compiledContract) {
     if (!_contractModule) {
-      _contractModule = await import('./managed/private-party/contract/index.js');
+      _contractModule = await import('./managed/private-reserve-auction/contract/index.js');
     }
     _compiledContract = CompiledContract.make(
-      'private-party',
+      'private-reserve-auction',
       _contractModule.Contract,
     );
     _compiledContract = CompiledContract.withVacantWitnesses(_compiledContract);
@@ -22,7 +22,7 @@ export async function getCompiledContract(zkPath?: string): Promise<any> {
 export async function getLedger(): Promise<any> {
   if (!_ledgerFn) {
     if (!_contractModule) {
-      _contractModule = await import('./managed/private-party/contract/index.js');
+      _contractModule = await import('./managed/private-reserve-auction/contract/index.js');
     }
     _ledgerFn = _contractModule.ledger;
   }
