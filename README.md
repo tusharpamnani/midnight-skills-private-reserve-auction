@@ -1,30 +1,32 @@
-# Private Party RSVP DApp
+# Private Reserve Auction DApp
 
-A privacy-preserving party RSVP application on **Midnight Network** — attendees RSVP privately, then cross the **privacy boundary** when checking in with an unshielded NIGHT entry fee.
+A privacy-preserving reserve auction on **Midnight Network** — the reserve price is hidden on-chain, bidder identities stay private, and the winner crosses the **privacy boundary** when claiming the item via unshielded NIGHT payment.
 
 ## Architecture
 
-### Smart Contract (`contract/src/private-party.compact`)
+### Smart Contract (`contract/src/private-reserve-auction.compact`)
 
 | Circuit | Who | What it does |
 |---|---|---|
-| `constructor` | Organizer | Deploy with max guests, entry fee, and a secret |
-| `rsvp` | Attendee | Privately commit via `persistentCommit` — only a hash stored on-chain |
-| `startParty` | Organizer | Open the door for check-in (requires organizer secret) |
-| `checkIn` | Attendee | Pay entry fee (unshielded NIGHT) → address becomes **public on ledger** |
-| `closeEntry` | Organizer | Close doors early if not all checked in |
-| `claimFees` | Organizer | Send total collected fees to organizer's unshielded address |
+| `constructor` | Seller | Deploy with hidden reserve price (committed via `persistentCommit`) and max bidders |
+| `bid` | Bidder | Place a public bid with a private identity — overwrites allowed if higher |
+| `closeAuction` | Seller | Close bidding early (or auto-closes when `bidCount == maxBids`) |
+| `revealPrice` | Seller | Reveal the hidden reserve price — verified against the on-chain commitment |
+| `claimItem` | Winner | Pay reserve price (unshielded NIGHT) → address becomes **public on ledger** |
+| `claimProceeds` | Seller | Send collected reserve to seller's unshielded address |
 
 ### Privacy Model
 
 | Phase | On-chain data | Private? |
 |---|---|---|
-| RSVP | `persistentCommit(salt, address)` hash in `hashedPartyGoers` | **Yes** |
-| Start | `partyState = STARTED` | State only, no identities |
-| **Check in** | `receiveUnshielded` + `address` in `checkedInParty` | **No — privacy boundary** |
-| Claim fees | `sendUnshielded` to organizer | **No** |
+| Deploy | `persistentCommit(price, secret)` hash in `hiddenPrice` | Reserve price **hidden** |
+| Bid | Bid amount **public**, bidder identity = `getDappPublicKey(secret)` hash | Identity **hidden** |
+| Close | `auctionState = CLOSED` | State only |
+| **Reveal** | `publicPrice = disclose(minPrice)` | Reserve price becomes **public** |
+| **Claim** | `receiveUnshielded` + address in `winnerClaimed` | **No — privacy boundary** |
+| Proceeds | `sendUnshielded` to seller | **No** |
 
-No `witness` declarations — authentication uses `persistentHash("private-party:pk:" + secret)` compared to stored `organizer` key, with domain separator.
+No `witness` declarations — authentication uses `persistentHash("private-auction:pk:" + secret)` compared to stored `organizer` key, with domain separator.
 
 ## Prerequisites
 
@@ -45,16 +47,17 @@ Open http://localhost:3000 with the 1AM wallet installed.
 
 ## Usage
 
-**Organizer flow:**
-1. Connect wallet → select "Organizer" → set max guests + entry fee → deploy
-2. Share the contract address with attendees
-3. Start party → guests can check in
-4. Close doors → claim fees
+**Seller flow:**
+1. Connect wallet → select "I'm a Seller" → set reserve price (NIGHT) + max bidders → deploy
+2. Share the contract address with bidders
+3. Wait for bids → close auction (or auto-closes when full)
+4. Reveal reserve price (must match deploy value)
+5. Wait for winner to claim → claim proceeds
 
-**Attendee flow:**
-1. Connect wallet → select "Attendee" → paste contract address
-2. RSVP (private — only a hash goes on-chain)
-3. After party starts: Check In (pays unshielded NIGHT, address becomes public)
+**Bidder flow:**
+1. Connect wallet → select "I'm a Bidder" → paste contract address
+2. Place bid (public amount, private identity — can overwrite with higher bid)
+3. If highest bidder after auction settles: claim item (pays reserve, address becomes public)
 
 Secrets are stored in `localStorage` per contract address. Use the same browser to manage your role.
 
@@ -71,22 +74,24 @@ Secrets are stored in `localStorage` per contract address. Use the same browser 
 
 ```
 ├── contract/src/
-│   ├── private-party.compact   # Compact smart contract
-│   └── index.ts                # Compiled contract wrapper + exports
+│   ├── private-reserve-auction.compact  # Compact smart contract
+│   └── index.ts                         # Compiled contract wrapper + exports
 ├── lib/
-│   ├── midnight.ts             # Wallet session, providers, indexer polling
-│   ├── party.ts                # Deploy, rsvp, checkIn, etc.
-│   ├── address.ts              # Bech32 → UserAddress bytes
-│   ├── secret.ts               # Generate/store secrets in localStorage
-│   └── isomorphic-ws-fix.mjs   # WebSocket polyfill for Next.js
+│   ├── midnight.ts                      # Wallet session, providers, indexer polling
+│   ├── auction.ts                       # Deploy, bid, close, reveal, claim
+│   ├── address.ts                       # Bech32 → UserAddress bytes
+│   ├── secret.ts                        # Generate/store secrets in localStorage
+│   └── isomorphic-ws-fix.mjs            # WebSocket polyfill for Next.js
 ├── app/
 │   ├── layout.tsx
-│   ├── page.tsx
-│   └── party/PartyClient.tsx   # Full organizer + attendee UI
-├── public/zk/private-party/    # ZK proving & verification keys
+│   ├── page.tsx                         # Landing page
+│   └── auction/
+│       ├── page.tsx                     # Server shell
+│       └── AuctionClient.tsx            # Seller + bidder UI
+├── public/zk/private-reserve-auction/   # ZK proving & verification keys
 └── scripts/sync-zk-assets.mjs
 ```
 
 ## Target Network
 
-**Preview** (hardcoded in `PartyClient.tsx`). Change to `preprod` to target Preprod.
+**Preview** (hardcoded in `AuctionClient.tsx`). Change to `preprod` to target Preprod.
