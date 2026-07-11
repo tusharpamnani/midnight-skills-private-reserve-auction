@@ -1,6 +1,5 @@
 node_modules/
 .next/
-contract/src/managed/
 out/
 .DS_Store
 *.pem
