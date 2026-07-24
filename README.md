@@ -1,6 +1,16 @@
 # Private Reserve Auction DApp
 
+[![CI](https://github.com/tusharpamnani/midnight-skills-private-reserve-auction/actions/workflows/ci.yml/badge.svg)](https://github.com/tusharpamnani/midnight-skills-private-reserve-auction/actions/workflows/ci.yml)
+
 A privacy-preserving reserve auction on **Midnight Network** — the reserve price is hidden on-chain, bidder identities stay private, and the winner crosses the **privacy boundary** when claiming the item via unshielded NIGHT payment.
+
+## Live Deployment (Preprod)
+
+**Contract address:** `7e97b4eb16436f0c5af3ee0f6b45058a2332e0bb0039da6ee9c417dce56a116c`
+
+## Connect
+
+Follow us on X: [@Midnight_Skills](https://x.com/Midnight_Skills)
 
 ## Architecture
 
@@ -94,4 +104,4 @@ Secrets are stored in `localStorage` per contract address. Use the same browser 
 
 ## Target Network
 
-**Preview** (hardcoded in `AuctionClient.tsx`). Change to `preprod` to target Preprod.
+**Preprod** (hardcoded in `AuctionClient.tsx`).
