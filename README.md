@@ -12,6 +12,10 @@ A privacy-preserving reserve auction on **Midnight Network** — the reserve pri
 
 Follow us on X: [@Midnight_Skills](https://x.com/Midnight_Skills)
 
+## Demo
+
+[demo.mp4](./public/demo.mp4)
+
 ## Architecture
 
 ### Smart Contract (`contract/src/private-reserve-auction.compact`)
