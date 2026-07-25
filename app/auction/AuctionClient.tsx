@@ -36,6 +36,7 @@ export default function AuctionClient() {
   const [statusMessage, setStatusMessage] = useState('');
   const [walletInstalled, setWalletInstalled] = useState<boolean | null>(null);
   const [proceedsClaimed, setProceedsClaimed] = useState(false);
+  const [auctionLoading, setAuctionLoading] = useState(false);
   const mountedRef = useRef(true);
 
   const [reservePriceNight, setReservePriceNight] = useState('0.01');
@@ -77,13 +78,36 @@ export default function AuctionClient() {
     if (!session || !contractAddress) return;
     try {
       const state = await fetchAuctionState(session.config.indexerUri, contractAddress);
-      if (mountedRef.current) setAuctionState(state);
+      if (mountedRef.current) {
+        setAuctionState(state);
+        setAuctionLoading(false);
+      }
     } catch (e) {
-      if (mountedRef.current) setError(e instanceof Error ? e.message : 'Refresh failed');
+      if (mountedRef.current) {
+        setError(e instanceof Error ? e.message : 'Refresh failed');
+        setAuctionLoading(false);
+      }
     }
   }, [session, contractAddress]);
 
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => {
+    if (!session || !contractAddress) return;
+    setAuctionLoading(true);
+    setError('');
+    setAuctionState(null);
+    let cancelled = false;
+    (async () => {
+      try {
+        const state = await fetchAuctionState(session.config.indexerUri, contractAddress);
+        if (!cancelled && mountedRef.current) setAuctionState(state);
+      } catch (e) {
+        if (!cancelled && mountedRef.current) setError(e instanceof Error ? e.message : 'Failed to load auction');
+      } finally {
+        if (!cancelled && mountedRef.current) setAuctionLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [session, contractAddress]);
 
   const connectWallet = useCallback(async () => {
     setConnecting(true);
@@ -106,7 +130,7 @@ export default function AuctionClient() {
 
   const handleDeploy = useCallback(async () => {
     if (!session) return;
-    await withLoading('Deploying auction contract…', async (setStatus) => {
+    await withLoading('Deploying auction contract…', async () => {
       const secret = generateSecret();
       const addr = await deployAuction(
         session,
@@ -116,10 +140,6 @@ export default function AuctionClient() {
       );
       setContractAddress(addr);
       saveSecret('seller', addr, secret);
-
-      setStatus('Waiting for indexer…');
-      const state = await fetchAuctionState(session.config.indexerUri, addr);
-      setAuctionState(state);
     });
   }, [session, withLoading, reservePriceNight, maxBidders]);
 
@@ -358,7 +378,14 @@ export default function AuctionClient() {
             </button>
           </div>
 
-          {state && (
+          {auctionLoading && (
+            <div className="flex items-center justify-center gap-2 rounded-lg border border-zinc-200 p-6 dark:border-zinc-800">
+              <span className="inline-block h-2 w-2 rounded-full bg-zinc-400 animate-pulse" />
+              <span className="text-sm text-zinc-500 dark:text-zinc-400">Loading auction state…</span>
+            </div>
+          )}
+
+          {!auctionLoading && state && (
             <div className="rounded-lg border border-zinc-200 p-6 text-center dark:border-zinc-800">
               <p className="text-xs text-zinc-400 uppercase tracking-wider mb-1">Auction State</p>
               <p className="text-2xl font-bold tracking-tight">
@@ -379,7 +406,7 @@ export default function AuctionClient() {
           )}
 
           {/* Seller actions */}
-          {role === 'seller' && (
+          {!auctionLoading && role === 'seller' && (
             <div className="space-y-3">
               {state?.auctionState === 'OPEN' && (
                 <button
@@ -425,7 +452,7 @@ export default function AuctionClient() {
           )}
 
           {/* Bidder actions */}
-          {role === 'bidder' && (
+          {!auctionLoading && role === 'bidder' && (
             <div className="space-y-3">
               {state?.auctionState === 'OPEN' && (
                 <>

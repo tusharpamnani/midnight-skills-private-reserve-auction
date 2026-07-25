@@ -188,8 +188,8 @@ export async function createConnectedSession(
 export async function pollForState(
   queryUrl: string,
   contractAddress: string,
-  maxAttempts = 120,
-  intervalMs = 2000,
+  maxAttempts = 30,
+  intervalMs = 1000,
 ): Promise<string> {
   for (let i = 0; i < maxAttempts; i++) {
     const res = await fetch(queryUrl, {
