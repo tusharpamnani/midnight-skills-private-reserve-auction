@@ -19,11 +19,20 @@ async function makeCompiledContract() {
   return _compiledContract;
 }
 
+export async function initPrivateState(
+  session: ConnectedSession,
+  contractAddress: string,
+) {
+  await session.providers.privateStateProvider.setContractAddress(contractAddress);
+  await session.providers.privateStateProvider.set(PRIVATE_STATE_ID, {});
+}
+
 function setSize(value: unknown): number {
   if (typeof value === 'number') return value;
+  if (typeof value === 'bigint') return Number(value);
   if (value && typeof value === 'object' && 'size' in value) {
     const size = (value as { size: unknown }).size;
-    if (typeof size === 'function') return Number((size as () => number)());
+    if (typeof size === 'function') return Number((size as () => bigint)());
     if (typeof size === 'number') return size;
   }
   return 0;
@@ -31,6 +40,7 @@ function setSize(value: unknown): number {
 
 function setToNumber(value: unknown): number {
   if (typeof value === 'number') return value;
+  if (typeof value === 'bigint') return Number(value);
   if (value && typeof value === 'object' && 'size' in value) {
     const size = (value as { size: unknown }).size;
     if (typeof size === 'function') return Number((size as () => number)());

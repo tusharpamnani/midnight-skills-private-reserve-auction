@@ -11,6 +11,7 @@ import {
   claimProceeds,
   fetchAuctionState,
   userAddressFromSession,
+  initPrivateState,
   ZK_PATH,
 } from '@/lib/auction';
 import { generateSecret, loadSecret, saveSecret } from '@/lib/secret';
@@ -34,11 +35,13 @@ export default function AuctionClient() {
   const [busy, setBusy] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
   const [walletInstalled, setWalletInstalled] = useState<boolean | null>(null);
+  const [proceedsClaimed, setProceedsClaimed] = useState(false);
   const mountedRef = useRef(true);
 
   const [reservePriceNight, setReservePriceNight] = useState('0.01');
   const [maxBidders, setMaxBidders] = useState('5');
   const [bidAmountNight, setBidAmountNight] = useState('0.02');
+  const [joinAddress, setJoinAddress] = useState('');
 
   useEffect(() => {
     detectWallet().then((w) => setWalletInstalled(w !== null));
@@ -123,6 +126,7 @@ export default function AuctionClient() {
   const handlePlaceBid = useCallback(async () => {
     if (!session || !contractAddress) return;
     await withLoading('Placing bid (proving + submitting)…', async (setStatus) => {
+      await initPrivateState(session, contractAddress);
       let secret = loadSecret('bidder', contractAddress);
       if (!secret) {
         secret = generateSecret();
@@ -165,6 +169,7 @@ export default function AuctionClient() {
     const secret = loadSecret('bidder', contractAddress);
     if (!secret) { setError('Bidder secret not found. Place a bid first.'); return; }
     await withLoading('Claiming item (proving + submitting)…', async (setStatus) => {
+      await initPrivateState(session, contractAddress);
       await claimItem(session, contractAddress, userAddressFromSession(session), secret);
       setStatus('Waiting for indexer…');
       const state = await fetchAuctionState(session.config.indexerUri, contractAddress);
@@ -178,6 +183,7 @@ export default function AuctionClient() {
     if (!secret) { setError('Seller secret not found.'); return; }
     await withLoading('Claiming proceeds…', async (setStatus) => {
       await claimProceeds(session, contractAddress, userAddressFromSession(session), secret);
+      setProceedsClaimed(true);
       setStatus('Waiting for indexer…');
       const state = await fetchAuctionState(session.config.indexerUri, contractAddress);
       setAuctionState(state);
@@ -186,7 +192,9 @@ export default function AuctionClient() {
 
   const reset = useCallback(() => {
     setContractAddress('');
+    setJoinAddress('');
     setAuctionState(null);
+    setProceedsClaimed(false);
     setError('');
   }, []);
 
@@ -311,11 +319,27 @@ export default function AuctionClient() {
         </div>
       )}
 
-      {/* Bidder hint — no contract yet */}
+      {/* Bidder — join existing auction */}
       {session && !contractAddress && role === 'bidder' && !busy && (
-        <div className="text-center text-sm text-zinc-500 dark:text-zinc-400 py-8">
-          <p>Paste a deployed auction contract address to participate.</p>
-          <p className="mt-2">Ask the seller for the contract address.</p>
+        <div className="space-y-4">
+          <label className="flex flex-col gap-1 text-xs text-zinc-500 dark:text-zinc-400">
+            Auction contract address
+            <input
+              type="text"
+              placeholder="0x…"
+              value={joinAddress}
+              onChange={(e) => setJoinAddress(e.target.value)}
+              className="h-10 rounded-lg border border-zinc-200 bg-white px-3 text-sm font-mono dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100"
+            />
+          </label>
+          <button
+            onClick={() => setContractAddress(joinAddress)}
+            disabled={!joinAddress.trim()}
+            className="w-full h-11 rounded-full bg-zinc-900 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+          >
+            Join Auction
+          </button>
+          <p className="text-xs text-zinc-400">Ask the seller for the contract address.</p>
         </div>
       )}
 
@@ -391,10 +415,10 @@ export default function AuctionClient() {
               {state?.auctionState === 'SETTLED' && (
                 <button
                   onClick={handleClaimProceeds}
-                  disabled={busy}
+                  disabled={busy || proceedsClaimed}
                   className="w-full h-12 rounded-full bg-zinc-900 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
                 >
-                  {busy ? statusMessage || 'Processing…' : 'Claim Proceeds'}
+                  {proceedsClaimed ? 'Proceeds Claimed' : busy ? statusMessage || 'Processing…' : 'Claim Proceeds'}
                 </button>
               )}
             </div>
@@ -442,6 +466,14 @@ export default function AuctionClient() {
               <span className="text-zinc-400">Contract: </span>
               <span className="font-mono text-zinc-700 dark:text-zinc-300 break-all">{contractAddress}</span>
             </p>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(contractAddress);
+              }}
+              className="mt-2 rounded-md bg-zinc-200 px-3 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+            >
+              Copy Address
+            </button>
           </div>
 
           <div className="flex justify-center gap-3">
