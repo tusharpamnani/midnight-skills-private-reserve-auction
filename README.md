@@ -6,7 +6,7 @@ A privacy-preserving reserve auction on **Midnight Network** — the reserve pri
 
 ## Live Deployment (Preprod)
 
-**Contract address:** `7e97b4eb16436f0c5af3ee0f6b45058a2332e0bb0039da6ee9c417dce56a116c`
+**Contract address:** `bc063667cdc2ad34df0079a96c9240739dff65a479c7aa412fe9642be85c55c0`
 
 ## Connect
 
