@@ -83,6 +83,38 @@ Secrets are stored in `localStorage` per contract address. Use the same browser 
 | `npm run build` | Sync assets + production build |
 | `npm run compact` | Re-compile Compact contract |
 | `npm run sync:assets` | Copy ZK assets to `public/zk/` |
+| `npm run generate:users` | Generate 50 Preprod users (see below) |
+
+## Generating 50 Preprod Users
+
+For Level 5 requirements, use the automated user generation script to create 50 Preprod wallet addresses that interact with the auction contract.
+
+### Prerequisites
+
+1. **Proof server** (Docker): `docker run -d -p 6300:6300 midnightntwrk/proof-server:latest midnight-proof-server -v`
+2. **Funded wallet**: Generate a seed, derive the unshielded address, then fund it from the [Preprod faucet](https://faucet.preprod.midnight.network).
+
+```bash
+# Generate a seed
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+# Output: abc123... ← save this, that's your SEED_HEX
+```
+
+### Run
+
+```bash
+# 1. Deploy the auction with maxBidders ≥ 50 (via browser UI)
+# 2. Copy the contract address
+# 3. Run the user generator
+SEED_HEX="abc123..." ./scripts/create-users.sh <contract-address> 50
+```
+
+This will:
+- Create 50 unique HD wallet seeds and addresses
+- Submit a bid from each identity (using the funding wallet for gas)
+- Write `preprod-users.md` with the full address list
+
+All 50 wallet addresses are verifiable on-chain via the Preprod indexer because they are derived from the Midnight HD wallet standard (BIP-32-like derivation).
 
 ## Project Structure
 
